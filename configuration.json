@@ -1,0 +1,77 @@
+{
+  "secrets": [
+    {
+      "name": "CLIENT_ID",
+      "label": "Client ID",
+      "description": "ID.Me application Client ID"
+    },
+     {
+      "name": "CLIENT_SECRET",
+      "label": "Client Secret",
+      "description": "ID.Me application Client Secret"
+    }
+  ],
+  "configuration": [
+    {
+      "name": "REVERIFICATION_PERIOD",
+      "label": "Reverification Period",
+      "description": "ID.ME Reverification Period -- the duration (in hours) between ID.me verifications."
+    },
+    {
+      "name": "VERIFICATION_TYPE",
+      "label": "Verification Type",
+      "description": "ID.me Verification Type -- Communitity or Identity",
+      "options": [
+        {
+          "value": "Community",
+          "label": "community"
+        },
+        {
+          "value": "Identity",
+          "label": "identity"
+        }
+      ]
+    },
+    {
+      "name": "DEPLOYMENT_TYPE",
+      "label": "Deployment Type",
+      "description": "ID.me Deploymemt Type -- Sandbox or Production",
+      "options": [
+        {
+          "value": "Sandbox",
+          "label": "sandbox"
+        },
+        {
+          "value": "Production",
+          "label": "production"
+        }
+      ]
+    },
+    {
+      "name": "SCOPES",
+      "label": "Scopes",
+      "description": "ID.me Identity Verification Scopes"
+    },
+    {
+      "name": "BLOCK_LOGIN",
+      "label": "Block Login if there is no successful ID.me verification",
+      "description": "Block Login if there is no successful ID.me verification",
+      "options": [
+        {
+          "value": "true",
+          "label": "true"
+        },
+        {
+          "value": "false",
+          "label": "false"
+        }
+      ]
+    }
+  ],
+  "dependencies":[ 
+    {
+      "name": "axios",
+      "version": "1.4.0" 
+    }
+  ]
+}
