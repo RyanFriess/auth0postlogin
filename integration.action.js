@@ -13,8 +13,13 @@ let config_obj = {};
 
 exports.onExecutePostLogin = async (event, api) =>{
 
+  let reverification_period = event.secrets.REVERIFICATION_PERIOD;
 
-  const reverification_period = event.secrets.REVERIFICATION_PERIOD;
+  // making sure reverification is at least once a year. 
+  if(reverification_period > (365*24)){
+      reverification_period=(365*24)
+  }
+
   let config = await getConfigObject(event);
   config_obj = config;
   console.log("Config!");
@@ -28,7 +33,7 @@ exports.onExecutePostLogin = async (event, api) =>{
     redirect_uri = `https://${tenant}.us.auth0.com/continue?state=${state}`;
 
     // If the user is not coming in via ID.me Identity Connection
-    if(event.connection.name!=="idme-identity" || event.connection.name!=="idme-community"){
+    if(event.connection.name!=="idme-identity" || event.connection.name!=="idmecommunity"){
         // check if the last_verified date is less than currentTime+customer interval;
         // let's say, for instance, we want to verify with ID.me every 30 days.
         // If 30+ days has gone by, check, reverify information.
@@ -46,14 +51,14 @@ exports.onExecutePostLogin = async (event, api) =>{
               let offset_amount =  reverification_period * (3600);
 
               // if (idme_verification_timestamp + interval) < currentTime
-              let current_time = (Date.now())/ 1000;
+              let current_time = Math.round((Date.now()) / 1000);
 
-              if((verification_timestamp+offset_amount) > current_time){
+              if((verification_timestamp+offset_amount) < current_time){
                   verification_needed=true;
               }
 
           }else{
-              // we may need one, so send them off to verify regardless? 
+              // we may need one, so send them off to verify regardless?
               verification_needed = true;
           }
 
@@ -77,14 +82,17 @@ exports.onContinuePostLogin = async(event, api)=>{
     console.log(event.request)
 
     let id_me_userdata_result = await getIdMeUserData(event,bearer_token);
+    console.log(id_me_userdata_result)
 
-    if(id_me_userdata_result.status==200){
-        api.user.setAppMetadata("idme_verification_timestamp", Date.now())
+    if(id_me_userdata_result.status==="success"){
+        api.user.setAppMetadata("idme_verification_timestamp", Math.round((Date.now()) / 1000))
         let idme_attributes = await parseResults(id_me_userdata_result.data);
         api.user.setAppMetadata("idme-attributes", idme_attributes);
-    }else{
+    }else if(id_me_userdata_result.status==="error"){
       if(event.secrets.BLOCK_LOGIN==="true"){
-          api.access.deny("Unable to validate user attributes from Id.me")
+          //api.access.deny("ID.me Verification Unsuccessful", "Unable to validate user attributes from Id.me");
+          // redirect them back to the login page for the application 
+          return api.access.deny("Unable to verify ID.Me attributes");
       }
     }
   }catch(error){
@@ -99,7 +107,7 @@ const exhangeCodeForToken = async(event, code) =>{
 
   let redirect_url = `https://${event.tenant.id}.us.auth0.com/continue?state=${event.transaction.state}`
 
-  // check the config object url 
+  // check the config object url
   let options = {
       method: "POST",
       url: "https://api.id.me/oauth/token",
@@ -146,11 +154,21 @@ const getIdMeUserData = async(event, token) =>{
         url: "https://api.id.me/api/public/v3/attributes",
         headers: {
           "Authorization": "Bearer " + token,
-        }, 
-        method: "GET",
+        },method: "GET",
         }
       }
-      let user_attribute_response = await axios.request(id_me_options);
+      let user_attribute_response = await axios.request(id_me_options).then((response)=>{
+        return{
+          status:"success",
+          data:response.data
+        }
+      }
+      ).catch((err)=>{
+        return{
+            status:"error",
+            data:err
+        }
+      })
       return user_attribute_response;
 }
 
@@ -159,7 +177,7 @@ const getConfigObject = async(event)=>{
 
   let configuration_obj = {
     "client_id":event.secrets.CLIENT_ID,
-    "verification_type":event.secrets.VERIFICATION_TYPE, 
+    "verification_type":event.secrets.VERIFICATION_TYPE,
     "deployment_type":event.secrets.DEPLOYMENT_TYPE,
     "scopes":event.secrets.SCOPES,
   }
@@ -213,7 +231,7 @@ const getRedirectUrl = async(event, config_obj, redirect)=>{
     }
   }
 
-  let url = `${url_prexfix}?client_id=${event.secrets.CLIENT_ID}&redirect_uri=${redirect}&${scope_uri}&response_type=code`; 
+  let url = `${url_prexfix}?client_id=${event.secrets.CLIENT_ID}&redirect_uri=${redirect}&${scope_uri}&response_type=code`;
   console.log(`Redirect URL : ${url}`);
   return url
 }
@@ -239,4 +257,3 @@ const parseResults = async(attribute_data)=>{
   console.log(idme_attributes);
   return idme_attributes;
 }
-
