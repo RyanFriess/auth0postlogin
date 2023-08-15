@@ -204,12 +204,22 @@ const getIdMeUserData = async (event, token) => {
 
 // read the event.configuration object and form a configuration object
 const getConfigObject = async (event) => {
+  let scope_values = event.secrets.SCOPES;
+
+  if(event.client.metadata.IDME_SCOPES!==undefined){
+    scope_values = event.client.metadata.IDME_SCOPES;
+  }
+
   const configuration_obj = {
     client_id: event.secrets.CLIENT_ID,
-    verification_type: event.configuration.VERIFICATION_TYPE,
-    deployment_type: event.configuration.DEPLOYMENT_TYPE,
-    scopes: event.configuration.SCOPES,
+    verification_type: event.secrets.VERIFICATION_TYPE,
+    deployment_type: event.secrets.DEPLOYMENT_TYPE,
+    scopes: scope_values,
+    enforcement_policy: event.secrets.ENFORCEMENT_POLICY,
+    block_login: event.secrets.BLOCK_LOGIN,
+    domain: event.secrets.DOMAIN
   };
+
 
   if (configuration_obj.verification_type === "community") {
     // check to see if there are multiple scopes
