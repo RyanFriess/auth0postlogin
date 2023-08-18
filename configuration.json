@@ -2,20 +2,20 @@
   "secrets": [
     {
       "name": "CLIENT_ID",
-      "label": "Client ID",
-      "description": "ID.Me application Client ID"
+      "label": "ID.me Client ID",
+      "description": "ID.me application Client ID"
     },
      {
       "name": "CLIENT_SECRET",
-      "label": "Client Secret",
-      "description": "ID.Me application Client Secret"
+      "label": "ID.me Client Secret",
+      "description": "ID.me application Client Secret"
     }
   ],
   "configuration": [
     {
       "name": "REVERIFICATION_PERIOD",
       "label": "Reverification Period",
-      "description": "ID.ME Reverification Period -- the duration (in hours) between ID.me verifications."
+      "description": "ID.me Reverification Period -- the duration (in hours) between ID.me verifications."
     },
     {
       "name": "VERIFICATION_TYPE",
@@ -66,6 +66,26 @@
           "label": "false"
         }
       ]
+    },
+    {
+      "name": " ID.me Enforcement Policy",
+      "label": "ID.me Enforcement policy ",
+      "description": "IDME verification settings. If the setting is Opt-In, the action will not execute for any client applications. If the setting is Opt-Out, it will execute for all client applications. This setting can be configuired in the client metadata by specifying IDME_VERIFICATION to either 'enabled' or 'disabled'",
+      "options": [
+        {
+          "value": "opt-in",
+          "label": "opt-in"
+        },
+        {
+          "value": "opt-out",
+          "label": "opt-out"
+        }
+      ]
+    },
+    {
+      "name": "Domain",
+      "label": "Auth0 Domain -- Eg: (tenant_name.us.auth0.com OR custom domain)",
+      "description": "Domain for auth0; Required for ID.me callback"
     }
   ],
   "dependencies":[ 
@@ -75,3 +95,4 @@
     }
   ]
 }
+
