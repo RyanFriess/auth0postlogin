@@ -69,7 +69,7 @@ const executeIDmeVerification = async (event, api) =>{
     const tenant = event.tenant.id;
     // grab the state parm from the transaction for the redirect
     const { state } = event.transaction;
-    redirect_uri = `https://${tenant}.${event.configuration.DOMAIN}/continue?state=${state}`;
+    redirect_uri = `https://${event.configuration.DOMAIN}/continue?state=${state}`;
 
     if(event.connection.name === 'idme-identity' || event.connection.name==='idmecommunity'){
       console.log("User coming from idme cnx; short circut action. ");
@@ -141,7 +141,7 @@ exports.onContinuePostLogin = async (event, api) => {
 // defining function to finish the OAuth code flow grant..
 
 const exhangeCodeForToken = async (event, code) => {
-  const redirect_url = `https://${event.tenant.id}.${event.configuration.DOMAIN}/continue?state=${event.transaction.state}`;
+  const redirect_url = `https://${event.configuration.DOMAIN}/continue?state=${event.transaction.state}`;
 
   // check the config object url
   let options = {
