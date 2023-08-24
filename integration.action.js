@@ -7,64 +7,118 @@
 
 const axios = require("axios");
 
+
 let redirect_uri = "";
 let config_obj = {};
 
 exports.onExecutePostLogin = async (event, api) => {
-  let reverification_period = event.configuration.REVERIFICATION_PERIOD;
 
-  // making sure reverification is at least once a year.
-  if (reverification_period > (365 * 24)) {
-    reverification_period = (365 * 24);
-  }
-
-  const config = await getConfigObject(event);
-  config_obj = config;
+  // check if IDME metadata is defined. 
+  let execute_verification; 
+  let verification;
+  let enforcement_policy = event.configuration.ENFORCEMENT_POLICY;
+  const ENABLED = "ENABLED";
+  const DISABLED = "DISABLED";
 
 
-  const tenant = event.tenant.id;
-  // grab the state parm from the transaction for the redirect
-  const { state } = event.transaction;
-  redirect_uri = `https://${tenant}.us.auth0.com/continue?state=${state}`;
+  if(event.client.metadata.IDME_VERIFICATION!==undefined){
 
-  // If the user is not coming in via ID.me Identity Connection
-  if (event.connection.name !== "idme-identity" || event.connection.name !== "idmecommunity") {
-    // check if the last_verified date is less than currentTime+customer interval;
-    // let's say, for instance, we want to verify with ID.me every 30 days.
-    // If 30+ days has gone by, check, reverify information.
-    try {
-      // get the idme_verification_timestamp off the user's app metadata
-      // if and only if it exists. This is returned as a 'Dictionary Implementation'
-      const { app_metadata } = event.user;
+    // string to upper case for simplicity here.. 
+    try{
+      verification = event.client.metadata.IDME_VERIFICATION.toUpperCase();
+    }catch(err){
+      // likely invalid arugment type exception. 
+      console.log(err);
+      return;
+    }
 
-      let verification_needed = false;
-      if (app_metadata.hasOwnProperty("idme_verification_timestamp")) {
-        const verification_timestamp = app_metadata.idme_verification_timestamp;
-
-        // 3600 seconds in an hour
-        const offset_amount = reverification_period * (3600);
-
-        // if (idme_verification_timestamp + interval) < currentTime
-        const current_time = Math.round((Date.now()) / 1000);
-
-        if ((verification_timestamp + offset_amount) < current_time) {
-          verification_needed = true;
+    enforcement_policy = event.configuration.ENFORCEMENT_POLICY;
+    // check if they opted in or out 
+    // call it ENFORCEMENT_POLICY;
+    if(enforcement_policy === "opt_in"){
+        // if it's opt in, check if IDME_VERIFICATION === 'ENABLED'
+        if(verification===ENABLED){
+          execute_verification = true;
+        }else{
+          execute_verification = false;
         }
-      } else {
-        // we may need one, so send them off to verify regardless?
-        verification_needed = true;
-      }
+    }else if(enforcement_policy === "opt_out"){
 
-      if (verification_needed) {
-        const redirect_url = await getRedirectUrl(event, config, redirect_uri);
-        // send the user to ID.ME authN endpoint
-        api.redirect.sendUserTo(redirect_url);
+      if(verification===DISABLED){
+          execute_verification = false;
+      }else{
+        execute_verification = true;
       }
-    } catch (err) {
-      console.error(err);
+    }
+  }else{
+    if(enforcement_policy === 'opt_in'){
+      // if it's opt in, check if IDME_VERIFICATION === 'ENABLED'
+        execute_verification = false;
+    }else if(enforcement_policy === 'opt_out'){
+      execute_verification = true;
     }
   }
+
+  if(execute_verification === true){
+    await executeIDmeVerification(event, api);
+  }
 };
+
+const executeIDmeVerification = async (event, api) =>{
+    let reverification_period = event.configuration.REVERIFICATION_PERIOD;
+
+    // making sure reverification is at least once a year.
+    if (reverification_period > (365 * 24)) {
+      reverification_period = (365 * 24);
+    }
+  
+    const config = await getConfigObject(event);
+    config_obj = config;
+  
+  
+    // grab the state parm from the transaction for the redirect
+    const { state } = event.transaction;
+    redirect_uri = `https://${event.configuration.DOMAIN}/continue?state=${state}`;
+
+    if(event.connection.name === 'idme-identity' || event.connection.name==='idmecommunity'){
+      console.log("User coming from idme cnx; short circut action. ");
+    } else{
+      // check if the last_verified date is less than currentTime+customer interval;
+      // let's say, for instance, we want to verify with ID.me every 30 days.
+      // If 30+ days has gone by, check, reverify information.
+      try {
+        // get the idme_verification_timestamp off the user's app metadata
+        // if and only if it exists. This is returned as a 'Dictionary Implementation'
+        const { app_metadata } = event.user;
+  
+        let verification_needed = false;
+        if (app_metadata.hasOwnProperty("idme_verification_timestamp")) {
+          const verification_timestamp = app_metadata.idme_verification_timestamp;
+  
+          // 3600 seconds in an hour
+          const offset_amount = reverification_period * (3600);
+  
+          // if (idme_verification_timestamp + interval) < currentTime
+          const current_time = Math.round((Date.now()) / 1000);
+  
+          if ((verification_timestamp + offset_amount) < current_time) {
+            verification_needed = true;
+          }
+        } else {
+          // we may need one, so send them off to verify regardless?
+          verification_needed = true;
+        }
+  
+        if (verification_needed) {
+          const redirect_url = await getRedirectUrl(event, config, redirect_uri);
+          // send the user to ID.ME authN endpoint
+          api.redirect.sendUserTo(redirect_url);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+}
 
 exports.onContinuePostLogin = async (event, api) => {
   // exchange the code for tokens.
@@ -96,7 +150,7 @@ exports.onContinuePostLogin = async (event, api) => {
 // defining function to finish the OAuth code flow grant..
 
 const exhangeCodeForToken = async (event, code) => {
-  const redirect_url = `https://${event.tenant.id}.us.auth0.com/continue?state=${event.transaction.state}`;
+  const redirect_url = `https://${event.configuration.DOMAIN}/continue?state=${event.transaction.state}`;
 
   // check the config object url
   let options = {
@@ -159,16 +213,27 @@ const getIdMeUserData = async (event, token) => {
 
 // read the event.configuration object and form a configuration object
 const getConfigObject = async (event) => {
+  // allow scopes (for now) to be overrideen with metadata. 
+
+  let scope_values = event.configuration.SCOPES;
+
+  if(event.client.metadata.IDME_SCOPES!==undefined){
+    scope_values = event.client.metadata.IDME_SCOPES;
+  }
+
   const configuration_obj = {
     client_id: event.secrets.CLIENT_ID,
     verification_type: event.configuration.VERIFICATION_TYPE,
     deployment_type: event.configuration.DEPLOYMENT_TYPE,
-    scopes: event.configuration.SCOPES,
+    scopes: scope_values,
+    enforcement_policy: event.configuration.ENFORCEMENT_POLICY,
+    block_login: event.configuration.BLOCK_LOGIN,
+    domain: event.configuration.DOMAIN
   };
 
   if (configuration_obj.verification_type === "community") {
     // check to see if there are multiple scopes
-    const configured_scopes = event.configuration.SCOPES;
+    const configured_scopes = configuration_obj.scopes;
     const scope_array = configured_scopes.split(" ");
 
     if (scope_array.length > 2) {
