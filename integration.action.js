@@ -7,6 +7,7 @@
 
 const axios = require("axios");
 
+
 let redirect_uri = "";
 let config_obj = {};
 
@@ -14,42 +15,51 @@ exports.onExecutePostLogin = async (event, api) => {
 
   // check if IDME metadata is defined. 
   let execute_verification; 
+  let verification;
+  let enforcement_policy = event.configuration.ENFORCEMENT_POLICY;
+  const ENABLED = "ENABLED";
+  const DISABLED = "DISABLED";
+
 
   if(event.client.metadata.IDME_VERIFICATION!==undefined){
 
-    let verification = event.client.metadata.IDME_VERIFICATION;
-    let enforcement_policy = event.configuration.ENFORCEMENT_POLICY;
-    // check if they opted in or out 
-    // call it ENFORCEMENT_POLICY;
-    if(enforcement_policy === 'opt_in'){
-        // if it's opt in, check if IDME_VERIFICATION === 'ENABLED'
-        if(verification==='enabled' || verification === 'ENABLED'){
-          execute_verification = true;
-        }
+    // string to upper case for simplicity here.. 
+    try{
+      verification = event.client.metadata.IDME_VERIFICATION.toUpperCase();
+    }catch(err){
+      // likely invalid arugment type exception. 
+      console.log(err);
+      return;
     }
 
-    if(enforcement_policy === 'opt_out'){
-      if(verification==='disabled' ||  verification == 'DISABLED'){
+    enforcement_policy = event.configuration.ENFORCEMENT_POLICY;
+    // check if they opted in or out 
+    // call it ENFORCEMENT_POLICY;
+    if(enforcement_policy === "opt_in"){
+        // if it's opt in, check if IDME_VERIFICATION === 'ENABLED'
+        if(verification===ENABLED){
+          execute_verification = true;
+        }else{
           execute_verification = false;
+        }
+    }else if(enforcement_policy === "opt_out"){
+
+      if(verification===DISABLED){
+          execute_verification = false;
+      }else{
+        execute_verification = true;
       }
     }
   }else{
     if(enforcement_policy === 'opt_in'){
       // if it's opt in, check if IDME_VERIFICATION === 'ENABLED'
-        execute_verification = true;
+        execute_verification = false;
     }else if(enforcement_policy === 'opt_out'){
-      execute_verification = false;
+      execute_verification = true;
     }
   }
-   
 
-  // only execute iff verification is set to true. 
-  // iff opt-out == true && IDME_VERIFICATION==='disabled'
-  /// iff opt-in === true &&& IDME_VERFICATION === 'enabled'
-  // if there's no metadata and it's opt-in, apply everywhere
-  // if it's opt-out, don't apply anywhere. 
-  
-  if(execute_verification === false){
+  if(execute_verification === true){
     await executeIDmeVerification(event, api);
   }
 };
@@ -66,7 +76,6 @@ const executeIDmeVerification = async (event, api) =>{
     config_obj = config;
   
   
-    const tenant = event.tenant.id;
     // grab the state parm from the transaction for the redirect
     const { state } = event.transaction;
     redirect_uri = `https://${event.configuration.DOMAIN}/continue?state=${state}`;
@@ -204,7 +213,9 @@ const getIdMeUserData = async (event, token) => {
 
 // read the event.configuration object and form a configuration object
 const getConfigObject = async (event) => {
-  let scope_values = event.secrets.SCOPES;
+  // allow scopes (for now) to be overrideen with metadata. 
+
+  let scope_values = event.configuration.SCOPES;
 
   if(event.client.metadata.IDME_SCOPES!==undefined){
     scope_values = event.client.metadata.IDME_SCOPES;
@@ -212,18 +223,17 @@ const getConfigObject = async (event) => {
 
   const configuration_obj = {
     client_id: event.secrets.CLIENT_ID,
-    verification_type: event.secrets.VERIFICATION_TYPE,
-    deployment_type: event.secrets.DEPLOYMENT_TYPE,
+    verification_type: event.configuration.VERIFICATION_TYPE,
+    deployment_type: event.configuration.DEPLOYMENT_TYPE,
     scopes: scope_values,
-    enforcement_policy: event.secrets.ENFORCEMENT_POLICY,
-    block_login: event.secrets.BLOCK_LOGIN,
-    domain: event.secrets.DOMAIN
+    enforcement_policy: event.configuration.ENFORCEMENT_POLICY,
+    block_login: event.configuration.BLOCK_LOGIN,
+    domain: event.configuration.DOMAIN
   };
-
 
   if (configuration_obj.verification_type === "community") {
     // check to see if there are multiple scopes
-    const configured_scopes = event.configuration.SCOPES;
+    const configured_scopes = configuration_obj.scopes;
     const scope_array = configured_scopes.split(" ");
 
     if (scope_array.length > 2) {
