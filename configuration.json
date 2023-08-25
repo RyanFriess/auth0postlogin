@@ -70,7 +70,7 @@
     {
       "name": " IDME_ENFORCMENT",
       "label": "ID.me Enforcement policy ",
-      "description": "IDME verification settings. If the setting is Opt-In, the action will not execute for any client applications. If the setting is Opt-Out, it will execute for all client applications. This setting can be configuired in the client metadata by specifying IDME_VERIFICATION to either 'enabled' or 'disabled'",
+      "description": "ID.me verification settings. If the setting is Opt-In, the action will not execute for any client applications. If the setting is Opt-Out, it will execute for all client applications. This setting can be configuired in the client metadata by specifying IDME_VERIFICATION to either 'enabled' or 'disabled'",
       "options": [
         {
           "value": "opt_in",
@@ -85,7 +85,7 @@
     {
       "name": "DOMAIN",
       "label": "Auth0 Domain -- Eg: (tenant_name.us.auth0.com OR custom domain)",
-      "description": "Domain for auth0; Required for ID.me callback"
+      "description": "Domain for Auth0; Required for ID.me callback"
     }
   ],
   "dependencies":[ 
