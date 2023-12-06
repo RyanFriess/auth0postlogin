@@ -28,7 +28,7 @@ The ID.me Auth0 post-login integration is for both identity proofing and communi
 3. Configure the integration using the following fields:
    * **Community or Identity** Select whether you will be leveraging ID.me's Community or Identity Verification solution.
    * **Sandbox or Production** Select whether you will be leveraging ID.me's Production (api.id.me) or Sandbox (api.idmelabs.com) endpoints
-   * **Timestamp** Specifies, in hours, how often you would like to prompt your users for ID.me Verification.
+   * **Reverification Period** Specifies, in hours, how often you would like to prompt your users for ID.me Verification.
    * **Client ID**  Unique Identifier that specifies your specific verification workflow and user experience. Capture this from the ID.me Developer Portal.
    * **Client Secret** Authenticates your specific verification workflow and user experience. Capture this from the ID.me Developer Portal.
    * **Scopes** Enter the desired ID.me scope(s).
@@ -36,6 +36,7 @@ The ID.me Auth0 post-login integration is for both identity proofing and communi
    * **Enforcement Policy** Select either Opt In or Opt Out. 
       * **Opt In** - If selected, the Action will only apply to Auth0 applications configured with the application metadata IDME_VERIFICATION with the value ENABLED
       * **Opt Out** - If selected, the Action will apply to all Auth0 applications except applications tagged with the application metadata IDME_VERIFICATION with the value DISABLED
+      * **Block Login** - If selected, the Action will block user's the login attempt if ID.me metadata is not found on the user's profile and if verification (or reverification) is required.
 4. **Optional Step** To apply unique ID.me Verification policies on individual Auth0 Applications, configure the Application Metadata to IDME_SCOPES with the ID.me policy as its value.
 
 
